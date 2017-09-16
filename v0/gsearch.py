@@ -4,6 +4,7 @@
 from googleapiclient.discovery import build
 import json
 import re
+from collections import Counter
 
 class SearchDocument(object):
     def __init__(self, fields, rank=None):
@@ -12,24 +13,11 @@ class SearchDocument(object):
         self.displink = fields['displayLink']
         self.url = fields['formattedUrl']
         self.snippet = fields['snippet']
-        self.key = self.url + '|' + self.title
+        self.key = self.url
         # statistics of terms in document
         self.words = self.parse(self.title) + self.parse(self.snippet)
         self.size = len(self.words)
-        self.tf = self.get_tf()
-
-    # normalized term frequency of each word
-    def get_tf(self):
-        res = {}
-        for word in self.words:
-            if not word in res:
-                res[word] = 1
-            else:
-                res[word] += 1
-        # normalize
-        for word, v in res.items():
-            res[word] = float(v) / self.size
-        return res
+        self.tf = Counter(self.words)
 
     # convert string to list of lowercase words w/o punctuations
     def parse(self, s):

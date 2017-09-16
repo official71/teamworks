@@ -30,7 +30,7 @@ def validate(args):
         print "[ERROR] target precision {} not in range (0, 1]".format(target_precision)
         exit(1)
     # validate query
-    query_terms = args.query.strip().split(' ')
+    query_terms = [unicode(i) for i in args.query.strip().split(' ')]
     if not query_terms:
         print "[ERROR] empty/invalid query string"
         exit(1)
@@ -56,18 +56,19 @@ def feedback(docs):
         rf = open('tmp/rel.txt', 'r+')
         irf = open('tmp/irrel.txt', 'r+')
         rels, irrels = f2set(rf), f2set(irf)
-        print "ok"
     except:
         rf = irf = None
         rels = irrels = []
 
     # for each document, require user feedback if not already in rels/irrels
     rel, irrel = set(), set()
+    c = 0
     for doc in docs:
-        print "\n" + "-" * 36
-        print doc.url
-        print doc.title
-        print doc.snippet
+        c += 1
+        print "\n" + "-" * 30 + format(c, '^3d') + "-" * 30
+        print "    URL: " + doc.url
+        print "  Title: " + doc.title
+        print "Snippet: " + doc.snippet
 
         if doc.key in rels:
             print "\nalready marked relevant, continue..."
@@ -95,13 +96,17 @@ def feedback(docs):
 def main(args):
     target_precision, query_terms, api, engine = validate(args)
     iteration, precision = 0, 0.0
+    ro = Rocchio(0.75, 0.25)
     while iteration == 0 or precision < target_precision:
+        print "=" * 80
+        print "[iteration:%2d]" % iteration,
+        print "query: " + " ".join(query_terms)
         # apply search on the current query terms
         docs = gsearch(" ".join(query_terms), api, engine)
         
         # collect user feedback
         rel, irrel, precision = feedback(docs)
-        print "[iteration: %2d] %d relevant, %d irrelevant, %.1f precision" % \
+        print "[iteration:%2d] %d relevant, %d irrelevant, %.1f precision" % \
             (iteration, len(rel), len(irrel), precision)
 
         if precision >= target_precision:
@@ -114,10 +119,11 @@ def main(args):
             break
 
         # update query string
-        break
+        query_terms += ro.update_query(rel, irrel, query_terms)
+        # break
 
         iteration += 1
-        if iteration >= 10:
+        if iteration >= 3:
             # maximum iteration
             print "maximum iteration exceeded"
             break
