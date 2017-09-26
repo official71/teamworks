@@ -1,6 +1,6 @@
 from math import log
 from invfile import *
-from heapq import *
+from heapq import nlargest
 
 """Rocchio Relevant Feedback class
 
