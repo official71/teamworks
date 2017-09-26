@@ -1,5 +1,6 @@
 from math import log
 from invfile import *
+from heapq import *
 
 """Rocchio Relevant Feedback class
 
@@ -100,7 +101,7 @@ class Rocchio(object):
                 self.rel_invf.tfs(word).values())) * idf if idf else 0
 
     ## update weights of words w.r.t irrelevant documents
-    #  for weighs(vectors) generated from relevant documents, subtract the 
+    #  for weights(vectors) generated from relevant documents, subtract the 
     #  weights of irrelevance
     #
     #  @param weights tf-idf vector of relevant documents, type: dict(key:str, value:float)
@@ -128,8 +129,7 @@ class Rocchio(object):
         self.__update_docs(rel, irrel)
 
         # the weights of each word, and a cache of idf of each word
-        weights = {}
-        idfs = {}
+        weights, idfs = {}, {}
 
         # first calculate the weights of each word in relevant documents, 
         # for each word, it is the sum of its tf-idf value in all relevant docs
@@ -140,6 +140,4 @@ class Rocchio(object):
             self.__weight_irrel(weights, idfs)
 
         # find the first k words with maximum weights
-        res = sorted(weights.items(), key=lambda x:-x[1])
-        return [i[0] for i in res[:min(k, len(res))]]
-
+        return [i[0] for i in nlargest(k, weights.items(), key=lambda x:x[1])]
