@@ -4,7 +4,7 @@ import argparse
 from gsearch import *
 from rocchio import *
 
-
+## validate input arguments
 def validate(args):
     # validate search API
     api = args.api
@@ -38,10 +38,10 @@ def validate(args):
     # all set, return validated arguments
     return target_precision, query_terms, api, engine
 
-'''
-collect user feedbacks on the documents returned by search engine,
-the feedback is binary Y/N indicating whether the document is relevant.
-'''
+
+## collect user feedbacks on the documents returned by search engine,
+#  the feedback is binary Y/N indicating whether the document is relevant.
+#  @param docs documents returned by search engine, type: list[SearchDocument]
 def feedback(docs):
     # to save human effort, we save the previous feedbacks in two files: 
     # "tmp/rel.txt" and "tmp/irrel.txt", where each row is the key of a doc
@@ -92,7 +92,8 @@ def feedback(docs):
     p = float(l1) / (l1 + l2) if l1 > 0 else 0
     return rel, irrel, p
 
-# main
+
+## main
 def main(args):
     target_precision, query_terms, api, engine = validate(args)
     iteration, precision = 0, 0.0
@@ -119,16 +120,17 @@ def main(args):
             break
 
         # update query string
-        query_terms += ro.update_query(rel, irrel, query_terms)
-        # break
+        query_terms += ro.generate_query(rel, irrel, query_terms)
 
         iteration += 1
-        if iteration >= 3:
+        if iteration >= 10:
             # maximum iteration
             print "maximum iteration exceeded"
             break
 
     print "Exit...\n"
+
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Relevance Feedback Demo')
