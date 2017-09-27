@@ -5,6 +5,8 @@ from googleapiclient.discovery import build
 import json
 import re
 from collections import Counter
+from nltk.stem.snowball import SnowballStemmer
+from scraper import WebScraper
 
 """Search Document class
 
@@ -14,23 +16,66 @@ the title, URL link, and a snippet of document. Also include some statistical
 information such as term frequency of each word.
 """
 class SearchDocument(object):
-    def __init__(self, fields, rank=None):
-        self.rank = rank
+    ## global stemming engine
+    try:
+        stemmer = SnowballStemmer("english")
+    except Exception as e:
+        print "SearchDocument class failed to initialize stemming engine: {}".format(e)
+        stemmer = None
+    ## global cache of word stemming to reduce calling snowball stemming API
+    cache_stemming = {}
+    scraper = WebScraper()
+
+    ## the constructor
+    #  @param fields "items" of Google search results, type: dict
+    #  @param stemming (False) True to enable stemming, e.g. stem("apples") = "apple"
+    #  @param htmltext (False) True to use the html text instead of snippet
+    #  @param normalize (False) True to normalize tf by document length
+    def __init__(self, fields, stemming=False, htmltext=False, normalize=False):
         self.title = fields['title']
         self.displink = fields['displayLink']
-        self.url = fields['formattedUrl']
+        self.url = fields['link'] # 'link' is the complete URL, not 'formattedUrl'
         self.snippet = fields['snippet']
         self.key = self.url
-        # statistics of terms in document
-        self.words = self.parse(self.title) + self.parse(self.snippet)
+        self.text = self.scraper.scrape_text(self.url) if htmltext else ""
+        self.stemming = stemming
+
+        # all words in document (with duplicates)
+        if htmltext:
+            self.words = self.__parse(self.text)
+        else:
+            self.words = self.__parse(self.title) + self.__parse(self.snippet)
+        # document length
         self.size = len(self.words)
-        self.tf = Counter(self.words)
+        # term count/frequency
+        self.tf = self.__tf(normalize)
+
+    ## calculate terms occurence/frequency
+    def __tf(self, normalize):
+        res = Counter(self.words)
+        if normalize:
+            for word, count in res.items():
+                res[word] = float(count)/self.size
+        return res
+
+    ## apply word stemming if necessary
+    def __stem(self, word):
+        if not self.stemming or not self.stemmer:
+            # stemming is disabled
+            return word
+        elif word in self.cache_stemming:
+            # found in cache
+            return self.cache_stemming[word]
+        else:
+            # stem, and save in cache
+            stemmed = self.cache_stemming[word] = self.stemmer.stem(word)
+            return stemmed
 
     ## convert string to list of lowercase words w/o punctuations
-    def parse(self, s):
+    def __parse(self, s):
         res = []
         for w in s.split():
-            r = re.sub(r'[\W_]', '', w.lower())
+            r = re.sub(r'[\W_]', '', self.__stem(w.lower()))
             if r:
                 res.append(r)
         return res
@@ -68,4 +113,4 @@ def gsearch_exec(query, api, engine):
 #  @return list of returned documents, type: list[SearchDocument]
 def gsearch(query, api, engine):
     raw = gsearch_exec(query, api, engine)
-    return [SearchDocument(i) for i in raw['items']]
+    return [SearchDocument(i, stemming=True, normalize=True) for i in raw['items']]
