@@ -30,7 +30,7 @@ class SearchDocument(object):
     #  @param fields "items" of Google search results, type: dict
     #  @param stemming (False) True to enable stemming, e.g. stem("apples") = "apple"
     #  @param htmltext (False) True to use the html text instead of snippet
-    #  @param normalize (False) True to normalize tf by document length
+    #  @param normalize (False) True to have term frequency instead of raw counts
     def __init__(self, fields, stemming=False, htmltext=False, normalize=False):
         self.title = fields['title']
         self.displink = fields['displayLink']
@@ -113,4 +113,23 @@ def gsearch_exec(query, api, engine):
 #  @return list of returned documents, type: list[SearchDocument]
 def gsearch(query, api, engine):
     raw = gsearch_exec(query, api, engine)
+
+    ##
+    # when cosntructing the documents, several decisions should be made:
+    #
+    # - do word stemming? 
+    #   yes, if 'car' is already in the query terms, we don't need to add 'cars' anymore
+    #
+    # - term frequency or raw counts?
+    #   frequency, although in our case the documents all have similar size because 
+    #   they are derived from API results
+    #
+    # - document is from the snippet or raw text of the source webpage?
+    #   snippet, experiments have shown poor results if we use raw text of webpages 
+    #   by "scraping" on our own. The scraped data is uneven in both size and quality 
+    #   among documents, and contains too much noise without any processing; on the 
+    #   other hand, the snippet returned by Google API gives the best summary of the 
+    #   webpage's contents (although mostly the contents around the keywords we searched 
+    #   for), besides it's much smaller in size and easier to process 
+    #   
     return [SearchDocument(i, stemming=True, normalize=True) for i in raw['items']]
